@@ -236,6 +236,8 @@ function EditorPage() {
                         socketRef={socketRef}
                         roomId={roomId}
                         onCodeChange={(code) => (codeRef.current = code)}
+                        selectedLanguage={selectedLanguage}
+
                     />
                 </main>
                 {showCompiler && (
@@ -243,6 +245,7 @@ function EditorPage() {
                         compiling={compiling}
                         compileResult={compileResult}
                         onClose={() => setShowCompiler(false)}
+                        
                     />
                 )}
             </div>

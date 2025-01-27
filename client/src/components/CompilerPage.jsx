@@ -43,7 +43,7 @@ function CompilerPage({ compiling, compileResult, onClose }) {
         <div className="flex h-full fixed top-0 right-0 shadow-lg" style={{ zIndex: 50 }}>
 
             <div
-                className="w-2 bg-black hover:bg-blue-800 cursor-ew-resize"
+                className="w-1 bg-black hover:bg-blue-800 cursor-ew-resize"
                 onMouseDown={handleMouseDown} 
                 style={{ zIndex: 100 }}
             ></div>
@@ -63,7 +63,7 @@ function CompilerPage({ compiling, compileResult, onClose }) {
                     </button>
                 </div>
                 <pre
-                    className={`bg-black p-2 rounded overflow-auto text-sm ${getOutputColor()}`}
+                    className={`bg-gray-800 p-2 rounded overflow-auto text-sm ${getOutputColor()}`}
                     style={{ maxHeight: "80vh", whiteSpace: "pre-wrap" }}
                 >
                     {compiling ? "Compiling...\n" : ""}
