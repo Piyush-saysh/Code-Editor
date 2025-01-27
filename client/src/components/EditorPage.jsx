@@ -97,9 +97,17 @@ function EditorPage() {
         };
 
         init(); 
-        // Initialize everything
+
+        const handleKeyPress = (event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === 'Enter' && !compiling) {
+                compileFunc(); 
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyPress);
 
 
+// Init 
         return () => {
             socketRef.current.disconnect();
             socketRef.current.off("joined");
@@ -199,20 +207,9 @@ function EditorPage() {
                             <Client key={client.socketId} userName={client.username} />
                         ))}
                     </div>
+{/* button compile code, save code, copy roomid, leave room  */}
                     <div className="space-y-3 mt-6">
-                        <button
-                            className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded shadow-md transition"
-                            onClick={copyRoomId}
-                        >
-                            Copy Room ID
-                        </button>
-                        <button
-                            className="w-full bg-red-600 hover:bg-red-700 py-2 rounded shadow-md transition"
-                            onClick={leaveRoom}
-                        >
-                            Leave Room
-                        </button>
-                        <button
+                    <button
                             className={`w-full py-2 rounded shadow-md transition ${
                                 compiling
                                     ? "bg-gray-500 cursor-not-allowed"
@@ -229,6 +226,19 @@ function EditorPage() {
                         >
                             Save Code
                         </button>
+                        <button
+                            className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded shadow-md transition"
+                            onClick={copyRoomId}
+                        >
+                            Copy Room ID
+                        </button>
+                        <button
+                            className="w-full bg-red-600 hover:bg-red-700 py-2 rounded shadow-md transition"
+                            onClick={leaveRoom}
+                        >
+                            Leave Room
+                        </button>
+                        
                     </div>
                 </aside>
                 <main className="flex-1 bg-gray-900 rounded-lg shadow-lg overflow-hidden relative flex">

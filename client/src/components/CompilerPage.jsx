@@ -67,7 +67,7 @@ function CompilerPage({ compiling, compileResult, onClose }) {
                     style={{ maxHeight: "80vh", whiteSpace: "pre-wrap" }}
                 >
                     {compiling ? "Compiling...\n" : ""}
-                    {compileResult || "No output available"}
+                    {compileResult}
                 </pre>
             </div>
         </div>
