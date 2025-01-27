@@ -23,6 +23,7 @@ function Editor({ socketRef, roomId, onCodeChange, selectedLanguage }) {
     const [theme, setTheme] = useState("material"); 
     const [fontSize, setFontSize] = useState(14); 
 
+// models for autoCompletion 
     const languageModes = {
         javascript: "javascript",
         java: "text/x-java",
@@ -78,7 +79,21 @@ function Editor({ socketRef, roomId, onCodeChange, selectedLanguage }) {
         };
     }, [theme, selectedLanguage, fontSize]); 
 
-    
+// Sync code
+    useEffect(() => {
+        if (socketRef.current) {
+            socketRef.current.on("code-change", ({ code }) => {
+                if (code !== null) {
+                    editorRef.current.setValue(code);
+                }
+            });
+        }
+        return () => {
+            socketRef.current.off("code-change");
+        };
+    }, [socketRef.current]);
+
+// Auto Suggestion Style
     useEffect(() => {
         const style = document.createElement("style");
         style.textContent = `
