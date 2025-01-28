@@ -9,3 +9,5 @@ export const initSocket = async ()=>{
     };
     return io("http://localhost:5174", option);
 }
+
+

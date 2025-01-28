@@ -36,7 +36,7 @@ function Home() {
                 <div className="flex flex-col items-center mb-8">
                     <Logo />
                     <h1 className="text-3xl font-bold text-center mt-4">
-                        Collaborative Room
+                        SyncScript   
                     </h1>
                     <p className="text-gray-400 mt-2 text-center">
                         Join or create a real-time collaborative coding room
