@@ -32,6 +32,26 @@ function Editor({ socketRef, roomId, onCodeChange, selectedLanguage }) {
         cpp: "text/x-c++src",
     };
 
+const defaultTemplates = {
+    javascript: `console.log("Hello, World!");`,
+    python: `print("Hello, World!")`,
+    c: `#include <stdio.h>\n\nint main() {\n    printf("Hello, World!\\n");\n    return 0;\n}`,
+    cpp: `#include <iostream>\n\n
+            using namespace std;\n\n
+            int main() {\n    
+            std::cout << "Hello, World!" << std::endl;\n    
+            return 0;\n
+            }`,
+    java: `public class Main {\n
+    public static void main(String[] args) {\n
+        System.out.println("Hello, World!");\n
+        }\n 
+    }`,
+}
+
+
+
+
     useEffect(() => {
         const editor = CodeMirror.fromTextArea(document.getElementById("realTimeEditor"), {
             mode: languageModes[selectedLanguage], 
@@ -47,6 +67,11 @@ function Editor({ socketRef, roomId, onCodeChange, selectedLanguage }) {
         editorRef.current = editor; 
         editor.setSize("100%", "100%");
         editor.getWrapperElement().style.fontSize = `${fontSize}px`; 
+
+// Set default template
+        if (!editor.getValue() && defaultTemplates[selectedLanguage]) {
+            editor.setValue(defaultTemplates[selectedLanguage]);
+        }
 
 
         editor.on("inputRead", (cm, change) => {
@@ -79,14 +104,43 @@ function Editor({ socketRef, roomId, onCodeChange, selectedLanguage }) {
         };
     }, [theme, selectedLanguage, fontSize]); 
 
+// clear terminal before changing language
+        useEffect(() => {
+            if (editorRef.current) {
+                const reset = window.confirm("Switching languages will reset your code. Continue?");
+                if (reset) {
+                    editorRef.current.setValue("");
+                    editorRef.current.setOption("mode", languageModes[selectedLanguage]);
+        
+                    const defaultCode = defaultTemplates[selectedLanguage] || "";
+                    editorRef.current.setValue(defaultCode);
+        
+                    socketRef.current?.emit("language-change", {
+                        roomId,
+                        language: selectedLanguage,
+                    });
+        
+                    socketRef.current?.emit("code-change", {
+                        roomId,
+                        code: defaultCode,
+                    });
+                }
+            }
+        }, [selectedLanguage]);
+        
+
+
 // Sync code
     useEffect(() => {
+        
         if (socketRef.current) {
-            socketRef.current.on("code-change", ({ code }) => {
-                if (code !== null) {
-                    editorRef.current.setValue(code);
+            socketRef.current.off("code-change").on("code-change", ({ code: newCode }) => {
+                if (newCode !== null && editorRef.current) {
+                    editorRef.current.setValue(newCode); 
                 }
             });
+        } else {
+            console.warn("Socket not ready");
         }
         return () => {
             socketRef.current.off("code-change");

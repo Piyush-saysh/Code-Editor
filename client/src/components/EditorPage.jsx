@@ -50,13 +50,9 @@ function EditorPage() {
                     toast.success(`${username} joined`);
                 }
                 setClients(clients);
-
                 if (language) {
                     setSelectedLanguage(language); 
-
                 }
-
-
                 socketRef.current.emit("sync-code", {
                     code: codeRef.current,
                     socketId,
@@ -109,11 +105,15 @@ function EditorPage() {
 
 // Init 
         return () => {
-            socketRef.current.disconnect();
-            socketRef.current.off("joined");
-            socketRef.current.off("disconnected");
-            socketRef.current.off("language-change");
-            socketRef.current.off("compile-result");
+            window.removeEventListener('keydown', handleKeyPress);
+            if(socketRef.current ){
+                
+                socketRef.current.disconnect();
+                socketRef.current.off("joined");
+                socketRef.current.off("disconnected");
+                socketRef.current.off("language-change");
+                socketRef.current.off("compile-result");
+            }
         };
     }, []);
 
@@ -185,10 +185,20 @@ function EditorPage() {
                             onChange={(e) => {
                                 const newLanguage = e.target.value;
                                 setSelectedLanguage(newLanguage);
+
                                 socketRef.current.emit("language-change", {
                                     roomId,
                                     language: newLanguage,
                                 });
+
+                                // Populate the editor with the default template
+                                if (defaultTemplates[newLanguage]) {
+                                    codeRef.current = defaultTemplates[newLanguage];
+                                    socketRef.current.emit("code-change", {
+                                        roomId,
+                                        code: defaultTemplates[newLanguage],
+                                    });
+                                }
                             }}
                             className="w-full bg-gray-700 text-white py-2 px-3 rounded focus:ring focus:ring-blue-500"
                         >
@@ -197,7 +207,7 @@ function EditorPage() {
                                     {lang.toUpperCase()}
                                 </option>
                             ))}
-                        </select>
+                        </select>   
                     </div>
                     <div
                         className="flex-grow overflow-y-auto space-y-2"
