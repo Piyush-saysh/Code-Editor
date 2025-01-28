@@ -36,12 +36,7 @@ const defaultTemplates = {
     javascript: `console.log("Hello, World!");`,
     python: `print("Hello, World!")`,
     c: `#include <stdio.h>\n\nint main() {\n    printf("Hello, World!\\n");\n    return 0;\n}`,
-    cpp: `#include <iostream>\n\n
-            using namespace std;\n\n
-            int main() {\n    
-            std::cout << "Hello, World!" << std::endl;\n    
-            return 0;\n
-            }`,
+    cpp: `#include <iostream>\n\nusing namespace std;\n\nint main() {\n    cout << "Hello, World!" << endl;\n    return 0;\n}`,
     java: `public class Main {\n
     public static void main(String[] args) {\n
         System.out.println("Hello, World!");\n
