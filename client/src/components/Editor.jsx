@@ -7,32 +7,32 @@ import "codemirror/theme/material.css";
 import "codemirror/theme/nord.css";
 import "codemirror/theme/eclipse.css";
 
-import "codemirror/mode/javascript/javascript.js"; 
-import "codemirror/mode/python/python.js"; 
-import "codemirror/mode/clike/clike.js"; 
+import "codemirror/mode/javascript/javascript.js";
+import "codemirror/mode/python/python.js";
+import "codemirror/mode/clike/clike.js";
 
 import "codemirror/addon/edit/closetag";
 import "codemirror/addon/edit/closebrackets";
-import "codemirror/addon/hint/show-hint.css"; 
-import "codemirror/addon/hint/show-hint"; 
-import "codemirror/addon/hint/javascript-hint"; 
+import "codemirror/addon/hint/show-hint.css";
+import "codemirror/addon/hint/show-hint";
+import "codemirror/addon/hint/javascript-hint";
 
 function Editor({ socketRef, roomId, onCodeChange, selectedLanguage }) {
-    const editorRef = useRef(null); 
-    const [code, setCode] = useState(""); 
-    const [theme, setTheme] = useState("material"); 
-    const [fontSize, setFontSize] = useState(14); 
+  const editorRef = useRef(null);
+  const [code, setCode] = useState("");
+  const [theme, setTheme] = useState("material");
+  const [fontSize, setFontSize] = useState(14);
 
-// models for autoCompletion 
-    const languageModes = {
-        javascript: "javascript",
-        java: "text/x-java",
-        python: "python",
-        c: "text/x-csrc",
-        cpp: "text/x-c++src",
-    };
+  // models for autoCompletion
+  const languageModes = {
+    javascript: "javascript",
+    java: "text/x-java",
+    python: "python",
+    c: "text/x-csrc",
+    cpp: "text/x-c++src",
+  };
 
-const defaultTemplates = {
+  const defaultTemplates = {
     javascript: `console.log("Hello, World!");`,
     python: `print("Hello, World!")`,
     c: `#include <stdio.h>\n\nint main() {\n    printf("Hello, World!\\n");\n    return 0;\n}`,
@@ -42,110 +42,113 @@ const defaultTemplates = {
         System.out.println("Hello, World!");\n
         }\n 
     }`,
-}
+  };
 
+  useEffect(() => {
+    const editor = CodeMirror.fromTextArea(
+      document.getElementById("realTimeEditor"),
+      {
+        mode: languageModes[selectedLanguage],
+        theme: theme,
+        autoCloseTags: true,
+        autoCloseBrackets: true,
+        lineNumbers: true,
+        extraKeys: {
+          "Ctrl-Space": "autocomplete",
+        },
+      }
+    );
 
+    editorRef.current = editor;
+    editor.setSize("100%", "100%");
+    editor.getWrapperElement().style.fontSize = `${fontSize}px`;
 
+    // Set default template
+    if (!editor.getValue() && defaultTemplates[selectedLanguage]) {
+      editor.setValue(defaultTemplates[selectedLanguage]);
+    }
 
-    useEffect(() => {
-        const editor = CodeMirror.fromTextArea(document.getElementById("realTimeEditor"), {
-            mode: languageModes[selectedLanguage], 
-            theme: theme, 
-            autoCloseTags: true,
-            autoCloseBrackets: true, 
-            lineNumbers: true, 
-            extraKeys: {
-                "Ctrl-Space": "autocomplete",
-            },
+    editor.on("inputRead", (cm, change) => {
+      if (change.origin !== "setValue") {
+        cm.showHint({
+          completeSingle: false,
         });
+      }
+    });
 
-        editorRef.current = editor; 
-        editor.setSize("100%", "100%");
-        editor.getWrapperElement().style.fontSize = `${fontSize}px`; 
+    // editor handle
+    editor.on("change", (instance, changes) => {
+      if (!changes) return;
+      const { origin } = changes;
+      const codeContent = instance.getValue();
+      setCode(codeContent);
+      onCodeChange(codeContent);
 
-// Set default template
-        if (!editor.getValue() && defaultTemplates[selectedLanguage]) {
-            editor.setValue(defaultTemplates[selectedLanguage]);
-        }
-
-
-        editor.on("inputRead", (cm, change) => {
-            if (change.origin !== "setValue") {
-                cm.showHint({
-                    completeSingle: false, 
-                });
-            }
+      if (origin !== "setValue") {
+        socketRef.current.emit("code-change", {
+          roomId,
+          code: codeContent,
         });
+      }
+    });
 
-// editor handle
-        editor.on("change", (instance, changes) => {
-            if (!changes) return;
-            const { origin } = changes;
-            const codeContent = instance.getValue();
-            setCode(codeContent); 
-            onCodeChange(codeContent); 
+    return () => {
+      editor.toTextArea();
+    };
+  }, [theme, selectedLanguage, fontSize]);
 
+  // clear terminal before changing language
+  useEffect(() => {
+    if (editorRef.current) {
+      const currentCode = editorRef.current.getValue().trim();
+      const previousLanguage = Object.keys(languageModes).find(
+        (key) => languageModes[key] === editorRef.current.getOption("mode")
+      );
 
-            if (origin !== "setValue") {
-                socketRef.current.emit("code-change", {
-                    roomId,
-                    code: codeContent,
-                });
-            }
+      const previousDefaultCode =
+        defaultTemplates[previousLanguage]?.trim() || "";
+      const newDefaultCode = defaultTemplates[selectedLanguage] || "";
+
+      const reset = window.confirm(
+        "Do you want to erase the code and load the default template?"
+      );
+      if (reset) {
+        editorRef.current.setValue(newDefaultCode);
+      }
+      editorRef.current.setOption("mode", languageModes[selectedLanguage]);
+      socketRef.current?.emit("language-change", {
+        roomId,
+        language: selectedLanguage,
+      });
+      socketRef.current?.emit("code-change", {
+        roomId,
+        code: editorRef.current.getValue(),
+      });
+    }
+  }, [selectedLanguage]);
+
+  // Sync code
+  useEffect(() => {
+    if (socketRef.current) {
+      socketRef.current
+        .off("code-change")
+        .on("code-change", ({ code: newCode }) => {
+          if (newCode !== null && editorRef.current) {
+            editorRef.current.setValue(newCode);
+          }
         });
+    } else {
+      console.warn("Socket not ready");
+    }
+    return () => {
+      socketRef.current.off("code-change");
+    };
+  }, [socketRef.current]);
 
-        return () => {
-            editor.toTextArea(); 
-        };
-    }, [theme, selectedLanguage, fontSize]); 
-
-// clear terminal before changing language
-        useEffect(() => {
-            if (editorRef.current) {
-                const reset = window.confirm("Switching languages will reset your code. Continue?");
-                if (reset) {
-                    editorRef.current.setValue("");
-                    editorRef.current.setOption("mode", languageModes[selectedLanguage]);
-        
-                    const defaultCode = defaultTemplates[selectedLanguage] || "";
-                    editorRef.current.setValue(defaultCode);
-        
-                    socketRef.current?.emit("language-change", {
-                        roomId,
-                        language: selectedLanguage,
-                    });
-        
-                    socketRef.current?.emit("code-change", {
-                        roomId,
-                        code: defaultCode,
-                    });
-                }
-            }
-        }, [selectedLanguage]);
-        
-
-
-// Sync code
-    useEffect(() => {
-        
-        if (socketRef.current) {
-            socketRef.current.off("code-change").on("code-change", ({ code: newCode }) => {
-                if (newCode !== null && editorRef.current) {
-                    editorRef.current.setValue(newCode); 
-                }
-            });
-        } else {
-            console.warn("Socket not ready");
-        }
-        return () => {
-            socketRef.current.off("code-change");
-        };
-    }, [socketRef.current]);
-
-// Auto Suggestion Style
-    useEffect(() => {
-        const style = document.createElement("style");
-        style.textContent = `
+  // Auto Suggestion Style
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
             .CodeMirror-hints {
                 background-color: #1f2937 !important; 
                 color: #ffffff !important; 
@@ -157,71 +160,68 @@ const defaultTemplates = {
                 border-left: 4px solid #3b82f6 !important; 
             }
         `;
-        document.head.appendChild(style);
-        return () => {
-            document.head.removeChild(style);
-        };
-    }, []);
-    
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
-    return (
-        <div className="flex flex-col h-full w-full">
-{/* Editor Settings */}
-            <div className="flex items-center justify-between p-4 bg-gray-850 text-gray-200 rounded-t-lg">
-                <h2 className="font-semibold text-lg">Editor Settings</h2>
-                <div className="flex items-center space-x-4">
-{/* Theme Selector */}
-                    <div>
-                        <label htmlFor="theme-select" className="text-sm mr-2">
-                            Theme:
-                        </label>
-                        <select
-                            id="theme-select"
-                            value={theme}
-                            onChange={(e) => setTheme(e.target.value)} 
-                            className="p-2 bg-gray-700 text-white rounded-lg focus:ring focus:ring-blue-500"
-                        >
-                            <option value="material">Material</option>
-                            <option value="dracula">Dracula</option>
-                            <option value="monokai">Monokai</option>
-                            <option value="eclipse">Eclipse</option>
-                            <option value="nord">Nord</option>
-                        </select>
-                    </div>
+  return (
+    <div className="flex flex-col h-full w-full">
+      {/* Editor Settings */}
+      <div className="flex items-center justify-between p-4 bg-gray-850 text-gray-200 rounded-t-lg">
+        <h2 className="font-semibold text-lg">Editor Settings</h2>
+        <div className="flex items-center space-x-4">
+          {/* Theme Selector */}
+          <div>
+            <label htmlFor="theme-select" className="text-sm mr-2">
+              Theme:
+            </label>
+            <select
+              id="theme-select"
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+              className="p-2 bg-gray-700 text-white rounded-lg focus:ring focus:ring-blue-500"
+            >
+              <option value="material">Material</option>
+              <option value="dracula">Dracula</option>
+              <option value="monokai">Monokai</option>
+              <option value="eclipse">Eclipse</option>
+              <option value="nord">Nord</option>
+            </select>
+          </div>
 
-{/* Font Size Selector */}
-                    <div>
-                        <label htmlFor="font-size-select" className="text-sm mr-2">
-                            Font Size:
-                        </label>
-                        <select
-                            id="font-size-select"
-                            value={fontSize}
-                            onChange={(e) => setFontSize(Number(e.target.value))} 
-                            className="p-2 bg-gray-700 text-white rounded-lg focus:ring focus:ring-blue-500"
-                        >
-                            <option value="12">12px</option>
-                            <option value="14">14px</option>
-                            <option value="16">16px</option>
-                            <option value="18">18px</option>
-                            <option value="20">20px</option>
-                            <option value="22">22px</option>
-                        </select>
-                    </div>
-
-
-                </div>
-            </div>
-
-{/* Code Editor */}
-            <div className="flex-1 overflow-hidden bg-gray-900 rounded-b-lg relative">
-                <textarea
-                    id="realTimeEditor"
-                    className="absolute top-0 left-0 w-full h-full"
-                ></textarea>
-            </div>
+          {/* Font Size Selector */}
+          <div>
+            <label htmlFor="font-size-select" className="text-sm mr-2">
+              Font Size:
+            </label>
+            <select
+              id="font-size-select"
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value))}
+              className="p-2 bg-gray-700 text-white rounded-lg focus:ring focus:ring-blue-500"
+            >
+              <option value="12">12px</option>
+              <option value="14">14px</option>
+              <option value="16">16px</option>
+              <option value="18">18px</option>
+              <option value="20">20px</option>
+              <option value="22">22px</option>
+            </select>
+          </div>
         </div>
-    );
+      </div>
+
+      {/* Code Editor */}
+      <div className="flex-1 overflow-hidden bg-gray-900 rounded-b-lg relative">
+        <textarea
+          id="realTimeEditor"
+          className="absolute top-0 left-0 w-full h-full"
+        ></textarea>
+      </div>
+    </div>
+  );
 }
 
 export default Editor;
